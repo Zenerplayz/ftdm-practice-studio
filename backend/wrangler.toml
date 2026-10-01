@@ -1,0 +1,12 @@
+name = "ftdm-judge-api"
+main = "worker.mjs"
+compatibility_date = "2026-10-01"
+
+[vars]
+# Replace with the exact origin of your GitHub Pages site, without the repo path.
+ALLOWED_ORIGIN = "https://zenerplayz.github.io"
+JUDGE_MODEL = "stealth/space-bunny-alpha"
+
+# Set OPENROUTER_API_KEY with: npx wrangler secret put OPENROUTER_API_KEY
+# Never put it in this file or the frontend.
+
