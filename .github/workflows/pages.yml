@@ -27,10 +27,6 @@ jobs:
           node-version: '22'
       - name: Check JavaScript syntax
         run: node --check dist/app.js
-      - name: Configure public judging endpoint
-        env:
-          FTDM_API_BASE: ${{ vars.FTDM_API_BASE }}
-        run: node scripts/configure-api.cjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload static app
