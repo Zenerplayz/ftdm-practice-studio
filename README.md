@@ -18,7 +18,7 @@ Each person enters their own OpenRouter API key in the setup screen. The key sta
 
 Each user needs an OpenRouter key and should choose a model available to that key. The default is `stealth/space-bunny-alpha`; availability, free-model limits and provider retention policies can change. Do not share API keys. GitHub Pages is static, so there is no server environment variable to configure for judging.
 
-Space Bunny Alpha is the default judge model. OpenRouter lists its retirement on October 5, 2026; the owner can change `JUDGE_MODEL` in the backend environment when necessary. Paid providers are excluded by the backend's zero-price constraint.
+Space Bunny Alpha is the default model and is listed as free, but OpenRouter's free-model availability and limits can change. The model field is editable; check pricing before choosing a different model because paid models may use your OpenRouter account balance.
 
 Use **Load test visuals & transcript** for a synthetic submission with three example visuals, a two-person presentation and answers. Judge answers appear when the questions are revealed. Switching cases preserves each case's work in tab memory; refreshing loses the session. Download feedback before refreshing if needed.
 
