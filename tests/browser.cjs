@@ -18,6 +18,7 @@ async function open(options={}){
   if(options.clock)await page.clock.install();
   if(options.init)await page.addInitScript(options.init);
   await page.goto('http://practice.invalid/');
+  if(!options.gemini&&!options.ownerAPI)await page.locator('#provider').selectOption('openrouter',{force:true});
   return {page,context,errors};
 }
 async function test(name,fn,options){const target=await open(options);try{await fn(target);assert.deepEqual(target.errors,[]);findings.push({name,status:'passed'});console.log('PASS '+name);}finally{await target.context.close();}}
@@ -40,6 +41,44 @@ async function mockJudge(page,options={}){
 (async()=>{
   const downloadsPath=path.resolve(__dirname,'../.test-downloads');fs.mkdirSync(downloadsPath,{recursive:true});
   browser=await chromium.launch({headless:true,downloadsPath,...(process.env.FTDM_CHROME_PATH?{executablePath:process.env.FTDM_CHROME_PATH}:{})});
+  await test('Gemini default grades sample visuals, keeps keys out of exports, and clears on reload',async({page})=>{
+    assert.equal(await page.locator('#provider').inputValue(),'gemini');
+    await page.locator('#settings summary').click();await page.locator('#key').fill('synthetic-gemini-key');
+    assert.equal(await page.locator('#freerouting').isVisible(),false);
+    await page.route('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent',async route=>{
+      assert.equal(route.request().headers()['x-goog-api-key'],'synthetic-gemini-key');
+      assert.equal(route.request().url().includes('key='),false);
+      const request=route.request().postDataJSON(),prompt=JSON.parse(request.contents[0].parts[0].text);
+      assert.equal(request.contents[0].parts.filter(p=>p.inlineData).length,3);
+      assert.equal(request.generationConfig.responseFormat.text.mimeType,'APPLICATION_JSON');
+      const input={case:prompt.case,transcript:prompt.transcript,answers:prompt.answers.map(a=>a.answer),photos:[]},card=scorecard(input);
+      card.rows.forEach(row=>row.references[0].quote=input.transcript.slice(0,70));
+      await route.fulfill({json:{modelVersion:'gemini-3.8-flash-test',candidates:[{finishReason:'STOP',content:{parts:[{text:JSON.stringify(card)}]}}]}});
+    });
+    await page.getByText('Try a sample submission',{exact:true}).click();await page.locator('#loaddemo').click();await page.locator('#finish').click();await page.locator('#transcriptreview').check();await page.locator('#judge').click();await page.locator('.scorehero').waitFor();
+    assert.equal(await page.locator('.scorehero strong').innerText(),'48 / 100');assert.match(await page.locator('.scorehero').innerText(),/gemini-3.8-flash-test/);
+    const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#download').click()]);assert.equal(fs.readFileSync(await download.path(),'utf8').includes('synthetic-gemini-key'),false);
+    await page.getByText('Keep your practice work',{exact:true}).click();await page.locator('#autosave').check();assert.equal(await page.evaluate(()=>localStorage.getItem('ftdm-drafts-v2').includes('synthetic-gemini-key')),false);
+    await page.reload();assert.equal(await page.locator('#key').inputValue(),'');assert.equal(await page.locator('#provider').inputValue(),'gemini');
+  },{gemini:true});
+  await test('Gemini model discovery paginates, authenticates in header, and provider switch clears key',async({page})=>{
+    await page.locator('#settings summary').click();await page.locator('#key').fill('synthetic-gemini-key');let calls=0;
+    await page.route('https://generativelanguage.googleapis.com/v1beta/models?*',route=>{
+      calls++;assert.equal(route.request().headers()['x-goog-api-key'],'synthetic-gemini-key');
+      const more=new URL(route.request().url()).searchParams.get('pageToken');
+      return route.fulfill({json:{models:[{name:more?'models/gemini-3.5-flash-lite':'models/gemini-3.8-flash',displayName:'Test Gemini',supportedGenerationMethods:['generateContent']}],...(!more?{nextPageToken:'next'}:{})}});
+    });
+    await page.locator('#checkmodel').click();await page.getByText(/Key accepted for model listing/).waitFor();assert.equal(calls,2);assert.equal(await page.locator('#models option').count(),2);
+    await page.locator('#provider').selectOption('openrouter');assert.equal(await page.locator('#key').inputValue(),'');assert.equal(await page.locator('#models option').count(),0);
+    await page.locator('#provider').selectOption('gemini');await page.locator('#key').fill('another-synthetic-key');await page.locator('#clearkey').click();assert.equal(await page.locator('#key').inputValue(),'');
+  },{gemini:true});
+  await test('Gemini key and quota failures preserve draft and allow retry without exposing provider errors',async({page})=>{
+    await prepare(page);
+    for(const status of [401,403,404,429,503]){
+      await page.route('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent',route=>route.fulfill({status,json:{error:{message:'Do not expose synthetic-gemini-key'}}}));
+      await page.locator('#judge').click();await page.getByText(/Your draft is intact/).waitFor();assert.equal(await page.locator('#judge').isEnabled(),true);assert.equal(await page.locator('.scorehero').count(),0);assert.ok((await page.locator('#transcript').inputValue()).length>0);assert.equal((await page.locator('#notice').innerText()).includes('Do not expose'),false);
+    }
+  },{gemini:true});
   await test('startup, mobile layout and early start action',async({page})=>{
     assert.equal(await page.locator('#caseselect option').count(),8);
     await page.setViewportSize({width:390,height:844});

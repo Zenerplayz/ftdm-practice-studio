@@ -1,5 +1,6 @@
 'use strict';
 const $=id=>document.getElementById(id);
+const Gemini=window.FTDMGemini;
 const Judge=window.FTDMJudge,CASE_LIBRARY=window.FTDM_CASES;
 const GUIDE='https://cdn.prod.website-files.com/635c470cc81318fc3e9c1e0e/6a8327f7f7f637d914a9fc71_HS_TDM_Guidelines.pdf';
 const STORAGE='ftdm-drafts-v2',clone=value=>JSON.parse(JSON.stringify(value));
@@ -34,7 +35,7 @@ function controls(){
   document.querySelectorAll('.answer-stop').forEach(e=>e.disabled=!recording);
   ['transcript','model','key','custom','pis','qs','customtitle'].forEach(id=>$(id).readOnly=locked);
   document.querySelectorAll('#questions textarea').forEach(e=>e.readOnly=locked);
-  $('freeonly').disabled=locked;
+  $('freeonly').disabled=locked;$('provider').disabled=locked;$('clearkey').disabled=locked;$('checkmodel').disabled=locked;
   $('download').disabled=!feedback||feedback.stale||locked;
   $('judge').textContent=busy?'Reviewing evidence…':'Evaluate our roleplay';
   $('judge').setAttribute('aria-busy',String(busy));
@@ -207,7 +208,42 @@ function clearAudio(){lastRecording=null;audioUrls.forEach(URL.revokeObjectURL);
 
 function normalizeApiKey(value){const unquote=v=>v.trim().replace(/^(['"])([\s\S]*)\1$/,'$2').trim();return unquote(unquote(value).replace(/^Authorization\s*:\s*/i,'').replace(/^Bearer\s+/i,''));}
 function apiBase(){const value=(window.FTDM_API_BASE||'').trim().replace(/\/$/,'');if(value&&!/^https:\/\//.test(value))throw Error('The judging API address must use HTTPS.');return value;}
+function useGemini(){return $('provider').value==='gemini';}
+function providerChanged(){
+  const gemini=useGemini();$('key').value='';modelCatalog=null;$('models').replaceChildren();
+  $('model').value=gemini?Gemini.DEFAULT_MODEL:'stealth/space-bunny-alpha';
+  $('keylabel').textContent=gemini?'Gemini API key':'OpenRouter API key';
+  $('key').placeholder=gemini?'Paste your Gemini API key':'sk-or-v1-…';
+  $('keyhint').textContent='Kept in this tab only and sent directly to '+(gemini?'Google':'OpenRouter')+' when scoring. Never included in saved sessions or downloads.';
+  $('geminihelp').hidden=!gemini;$('freerouting').hidden=gemini;$('routinghint').hidden=gemini;
+  $('modelstatus').textContent=gemini?'Gemini grades your transcript, answers and visuals. Check available models with your key; quota and pricing are managed in Google AI Studio.':'Availability and image support vary by model and provider.';
+}
+$('provider').onchange=providerChanged;$('clearkey').onclick=()=>{$('key').value='';message('API key cleared from this tab.');};
+async function checkGeminiModels(){
+  const key=normalizeApiKey($('key').value);if(!key){$('modelstatus').textContent='Paste your Gemini API key first.';return;}
+  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);busy=true;controls();
+  $('modelstatus').textContent='Checking Gemini models…';
+  try{
+    let token='',catalog=[];
+    do{
+      const url=new URL(Gemini.BASE+'models');url.searchParams.set('pageSize','100');if(token)url.searchParams.set('pageToken',token);
+      const response=await fetch(url,{headers:{'x-goog-api-key':key},signal:controller.signal});
+      if(!response.ok)throw Error(Gemini.errorMessage(response.status));
+      const body=await response.json();if(!Array.isArray(body.models))throw Error('Google returned an invalid model list.');
+      catalog.push(...body.models);token=body.nextPageToken||'';
+      if(catalog.length>2000)throw Error('Model list is too large. Try again later.');
+    }while(token);
+    modelCatalog=catalog.filter(m=>m.supportedGenerationMethods?.includes('generateContent')&&/^models\/gemini-/.test(m.name));
+    $('models').replaceChildren(...modelCatalog.map(m=>{const option=document.createElement('option');option.value=m.name.replace(/^models\//,'');option.label=m.displayName||option.value;return option;}));
+    const selected=modelCatalog.find(m=>m.name==='models/'+Gemini.modelId($('model').value));
+    $('modelstatus').textContent=selected?'Key accepted for model listing · '+selected.displayName+'. Grading access, image support and quota are verified when you evaluate. Check pricing in Google AI Studio.':'This model is not in the current list. Choose an available model; no automatic replacement will be made.';
+  }catch(error){$('modelstatus').textContent=error.name==='AbortError'?'Model check timed out. You can retry.':error.message;}
+  finally{clearTimeout(timeout);busy=false;controls();}
+}
 async function checkModels(){
+  if(occupied())return;
+  if(useGemini())return checkGeminiModels();
+  busy=true;controls();
   $('modelstatus').textContent='Checking current model availability…';$('checkmodel').disabled=true;
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
   try{
@@ -219,18 +255,23 @@ async function checkModels(){
     const image=m.architecture?.input_modalities?.includes('image'),json=m.supported_parameters?.includes('response_format');
     $('modelstatus').textContent='Listed now · '+(image?'images supported':'text only')+' · '+(json?'JSON supported':'JSON support not listed')+' · $'+Number(m.pricing?.prompt)*1000000+' input / $'+Number(m.pricing?.completion)*1000000+' output per million tokens. Availability may still vary by provider.';
   }catch(error){$('modelstatus').textContent=error.name==='AbortError'?'Model check timed out. You can retry.':error.message;}
-  finally{clearTimeout(timeout);$('checkmodel').disabled=false;}
+  finally{clearTimeout(timeout);busy=false;controls();}
 }
 $('checkmodel').onclick=checkModels;
 $('model').oninput=()=>{$('modelstatus').textContent='Model changed. Check availability and pricing before scoring.';};
 $('judge').onclick=async()=>{
   if(occupied())return;
-  let snapshot,base,key,model,request;
+  let snapshot,base,key,model,request,gemini;
   try{
     if(!revealed)throw Error('Finish the presentation and answer both judge questions.');
     if(!$('transcriptreview').checked)throw Error('Review the transcript and check “Transcript reviewed” before scoring.');
-    snapshot=Judge.validateSubmission(submission());base=apiBase();model=$('model').value.trim();key=normalizeApiKey($('key').value);
-    if(!base){
+    snapshot=Judge.validateSubmission(submission());base=apiBase();gemini=!base&&useGemini();model=$('model').value.trim();key=normalizeApiKey($('key').value);
+    if(gemini){
+      if(!key||/\s/.test(key)){ $('settings').open=true;throw Error('Paste your Gemini API key in Judge settings.');}
+      model=Gemini.modelId(model);
+      if(modelCatalog&&!modelCatalog.some(m=>m.name==='models/'+model))throw Error('Choose a model present in the current availability list.');
+      request=Gemini.buildRequest(snapshot,model);
+    }else if(!base){
       if(!/^sk-or-v1-[A-Za-z0-9_-]{32,}$/.test(key)){ $('settings').open=true;throw Error('Paste your full OpenRouter API key in Judge settings.');}
       const selected=modelCatalog?.find(m=>m.id===model);
       if(modelCatalog&&!selected)throw Error('Choose a model present in the current availability list.');
@@ -242,15 +283,15 @@ $('judge').onclick=async()=>{
   const inputSignature=signature(snapshot),controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),120000);
   busy=true;controls();message('Reviewing your presentation, visuals and answers…');
   try{
-    const response=await fetch(base?base+'/api/judge':'https://openrouter.ai/api/v1/chat/completions',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json',...(!base?{Authorization:'Bearer '+key,'X-OpenRouter-Title':'FTDM Practice Studio'}:{})},body:JSON.stringify(base?{submission:snapshot}:request)});
+    const response=await fetch(base?base+'/api/judge':gemini?Gemini.BASE+'models/'+model+':generateContent':'https://openrouter.ai/api/v1/chat/completions',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json',...(gemini?{'x-goog-api-key':key}:!base?{Authorization:'Bearer '+key,'X-OpenRouter-Title':'FTDM Practice Studio'}:{})},body:JSON.stringify(base?{submission:snapshot}:request)});
     const raw=await response.text();let body;try{body=JSON.parse(raw);}catch{throw Error('The judging service returned a non-JSON response (HTTP '+response.status+').');}
-    if(!response.ok)throw Error(response.status===401?'OpenRouter could not authenticate this key. Paste the full key in Judge settings.':response.status===429?'The judging service is rate limited. Wait before retrying.':response.status===413?'Submission is too large. Use fewer or smaller visuals.':body.error?.message||'Judging service error '+response.status);
+    if(!response.ok)throw Error(gemini?Gemini.errorMessage(response.status):response.status===401?'OpenRouter could not authenticate this key. Paste the full key in Judge settings.':response.status===429?'The judging service is rate limited. Wait before retrying.':response.status===413?'Submission is too large. Use fewer or smaller visuals.':body.error?.message||'Judging service error '+response.status);
     const evaluated=base?Judge.validateSubmission(body.submission):snapshot;
-    const result=base?Judge.validateScorecard(body.feedback,evaluated):Judge.parseCompletion(body,snapshot);
+    const result=base?Judge.validateScorecard(body.feedback,evaluated):gemini?Gemini.parseCompletion(body,snapshot):Judge.parseCompletion(body,snapshot);
     // Ignore a result if inputs changed while the provider was processing.
     if(signature(Judge.validateSubmission(submission()))!==inputSignature||signature(evaluated)!==inputSignature)throw Error('The submission changed during judging. Score the current draft again.');
     if(base&&(body.promptVersion!==Judge.VERSION||typeof body.model!=='string'||!Number.isFinite(Date.parse(body.evaluatedAt))))throw Error('The judging API returned incompatible provenance. Update the frontend and backend together.');
-    feedback={...result,submission:clone(evaluated),model:typeof body.model==='string'?body.model:model,promptVersion:base?body.promptVersion:Judge.VERSION,rubricVersion:'FTDM-2026-27-content-v2',evaluatedAt:base?body.evaluatedAt:new Date().toISOString(),stale:false};
+    feedback={...result,submission:clone(evaluated),model:gemini?(body.modelVersion||model):typeof body.model==='string'?body.model:model,promptVersion:base?body.promptVersion:Judge.VERSION,rubricVersion:'FTDM-2026-27-content-v2',evaluatedAt:base?body.evaluatedAt:new Date().toISOString(),stale:false};
     renderResults();message('');busy=false;show(3);persist();
   }catch(error){message((error.name==='AbortError'?'The judge timed out.':error.message)+' Your draft is intact; you can retry.');}
   finally{clearTimeout(timeout);busy=false;controls();}
@@ -338,4 +379,5 @@ try{
   const saved=localStorage.getItem(STORAGE);
   if(saved){const restored=validatedSession(JSON.parse(saved));caseDrafts=restored.map;caseDrafts.forEach(d=>addCaseOption(d.case));selectCase(restored.currentCase,false);autosave=true;$('autosave').checked=true;$('draftstatus').textContent='Saved device draft restored. Re-enter your API key to score.';}
 }catch{$('draftstatus').textContent='The saved device draft could not be restored. You can clear it and import a downloaded session.';}
-if(window.FTDM_API_BASE){$('keysettings').hidden=true;$('modelsettings').hidden=true;$('modelstatus').textContent='Owner-managed judging service. Model and free-only routing are configured by the owner.';}
+providerChanged();
+if(window.FTDM_API_BASE){$('providersettings').hidden=true;$('keysettings').hidden=true;$('modelsettings').hidden=true;$('modelstatus').textContent='Owner-managed judging service. Model and free-only routing are configured by the owner.';}

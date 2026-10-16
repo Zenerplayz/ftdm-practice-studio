@@ -8,9 +8,15 @@ Use Node.js 20 or newer. Run `node serve.cjs`, then open http://localhost:4174. 
 
 Choose a case and **Start practice** to begin the 15-minute interview timer. You can type, record or import audio. Finish the presentation, answer both questions, review transcription errors, then evaluate. Preparation has a separate 30-minute timer that pauses and resumes without resetting. Starting the interview pauses preparation.
 
-Open **Judge settings** to enter your OpenRouter API key and choose a model. Keys stay in tab memory and are sent directly to OpenRouter when scoring; they are excluded from drafts and exports. **Check available models** fetches current availability, image capabilities, JSON support and listed pricing. The app does not silently replace models. Free-provider routing is enabled by default; unchecking it permits paid requests against your balance. A listed model can still be unavailable for a particular provider/key.
+Open **Judge settings**, leave **Google Gemini** selected, and [create an API key in Google AI Studio](https://aistudio.google.com/apikey). Paste the key and click **Check available models** to verify model-list access. The default is `gemini-3.8-flash`; the model is never replaced automatically. Review your transcript, answer both questions, then evaluate. Google receives the transcript, answers and attached visuals when grading. Audio transcription remains local.
 
-The previous default, `stealth/space-bunny-alpha`, remains for compatibility. Its old retirement-date text has been removed. Select an available replacement based on benchmark results and pricing, not a presumed quality ranking.
+The key stays in this tab's memory, is sent directly to Google in the `x-goog-api-key` header, and is excluded from device drafts and downloads. **Clear API key**, switching providers, or reloading clears it. Do not put personal keys in source or public configuration. FTDM does not require a Google sign-in or ChatGPT subscription.
+
+Free-tier availability and quotas depend on the model, project and region. A billing-enabled Google project may incur API charges; this app cannot enforce a free-only Gemini billing tier. Check your [quota and billing](https://ai.google.dev/gemini-api/docs/billing) in AI Studio. Model listing does not prove remaining quota or grading access. On quota, key, blocked-output or incomplete-output errors, the draft remains available and retries are manual.
+
+**OpenRouter** remains available in the provider selector with its existing model checks and free-provider routing. Switching providers clears the key so it cannot be sent to a different service. Configured owner-managed API deployments continue to use their owner's backend.
+
+Gemini uses Google's [generateContent API](https://ai.google.dev/api/generate-content) with structured JSON output and the same rubric, exact-quotation checks and score validation as the existing grader. Automated checks use synthetic responses; live Gemini grading requires your key and has not been verified.
 
 ## Drafts, recordings and results
 
