@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>FTDM Practice Studio</title><link rel="stylesheet" href="style.css">
+  <title>FTDM Practice Studio</title><meta name="description" content="Practice DECA FTDM cases with a teammate, local transcription and evidence-backed Gemini feedback."><link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header><a class="brand" href="./">FT<span>DM</span> / Practice Studio</a><span class="season">2026–27 · TEAM DECISION MAKING</span></header>
@@ -55,7 +55,7 @@
         <div id="modelsettings"><label for="model">Judge model</label><input id="model" list="models" value="gemini-3.8-flash" maxlength="200"><datalist id="models"></datalist><label id="freerouting" class="checklabel"><input id="freeonly" type="checkbox" checked> Use free providers only</label><p id="routinghint" class="hint">Unchecking allows paid requests against your OpenRouter balance. No automatic model replacement. Check availability and pricing before scoring.</p><button id="checkmodel" class="secondary">Check available models</button></div>
         <p id="modelstatus" class="hint" role="status">Availability and image support vary by model and provider.</p>
       </details>
-      <details class="card"><summary>Try a sample submission</summary><p>Load a fictional two-person presentation, three visuals and answers to explore the scorecard. These are practice examples, not an official answer key.</p><button id="loaddemo" class="secondary">Load test visuals & transcript</button><p id="demostatus" class="hint" role="status"></p></details>
+      <details class="card"><summary>Try a sample submission</summary><p><a href="example.html">View an example scorecard without an API key ↗</a></p><p>Load a fictional two-person presentation, three visuals and answers to explore the scorecard. These are practice examples, not an official answer key.</p><button id="loaddemo" class="secondary">Load test visuals & transcript</button><p id="demostatus" class="hint" role="status"></p></details>
       <p class="hint">Five indicators × 10, solution × 24, career competencies × 18, overall content readiness × 8 = 100. Scoring anchors are practice guidance; your actual judge's form is authoritative.</p>
     </article>
     <article data-panel="1" hidden>

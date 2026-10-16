@@ -5,7 +5,8 @@ compatibility_date = "2026-10-01"
 [vars]
 # Replace with the exact origin of your GitHub Pages site, without the repo path.
 ALLOWED_ORIGIN = "https://zenerplayz.github.io"
-JUDGE_MODEL = "stealth/space-bunny-alpha"
+# Set an available OpenRouter model explicitly before deploying.
+JUDGE_MODEL = ""
 JUDGE_STRUCTURED_OUTPUTS = "false"
 
 # Set OPENROUTER_API_KEY with: npx wrangler secret put OPENROUTER_API_KEY

@@ -211,7 +211,7 @@ function apiBase(){const value=(window.FTDM_API_BASE||'').trim().replace(/\/$/,'
 function useGemini(){return $('provider').value==='gemini';}
 function providerChanged(){
   const gemini=useGemini();$('key').value='';modelCatalog=null;$('models').replaceChildren();
-  $('model').value=gemini?Gemini.DEFAULT_MODEL:'stealth/space-bunny-alpha';
+  $('model').value=gemini?Gemini.DEFAULT_MODEL:'';
   $('keylabel').textContent=gemini?'Gemini API key':'OpenRouter API key';
   $('key').placeholder=gemini?'Paste your Gemini API key':'sk-or-v1-…';
   $('keyhint').textContent='Kept in this tab only and sent directly to '+(gemini?'Google':'OpenRouter')+' when scoring. Never included in saved sessions or downloads.';

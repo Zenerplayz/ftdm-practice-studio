@@ -12,7 +12,7 @@ export default {
     if(new URL(request.url).pathname!=='/api/judge')return reply(404,{error:{message:'Not found'}});
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers});
     if(request.method!=='POST')return reply(405,{error:{message:'Use POST for judging.'}});
-    if(!env.OPENROUTER_API_KEY)return reply(503,{error:{message:'The owner has not configured the judging service yet.'}});
+    if(!env.OPENROUTER_API_KEY||!env.JUDGE_MODEL?.trim())return reply(503,{error:{message:'The owner has not configured the judging service yet.'}});
     // Best-effort per-isolate protection. Public services need platform/shared rate limiting.
     const ip=request.headers.get('CF-Connecting-IP')||'local',now=Date.now();
     for(const [key,value]of windows)if(now-value.start>=60000)windows.delete(key);
@@ -35,7 +35,7 @@ export default {
       const rate=windows.get(ip)||{start:Date.now(),count:0};
       if(rate.count>=5)return reply(429,{error:{message:'Please wait a minute before requesting more scorecards.'}});
       rate.count++;windows.set(ip,rate);
-      const body=Judge.buildRequest(submission,env.JUDGE_MODEL||'stealth/space-bunny-alpha',{freeOnly:true,structured:env.JUDGE_STRUCTURED_OUTPUTS==='true'});
+      const body=Judge.buildRequest(submission,env.JUDGE_MODEL.trim(),{freeOnly:true,structured:env.JUDGE_STRUCTURED_OUTPUTS==='true'});
       const response=await fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+env.OPENROUTER_API_KEY,'X-OpenRouter-Title':'FTDM Practice Studio'},signal:AbortSignal.timeout(110000),body:JSON.stringify(body)});
       if(!response.ok)return reply(response.status,{error:{message:response.status===429?'The free model is rate limited. Try again later.':'The judging provider could not complete this request. Check model availability and owner configuration.'}});
       const result=await response.json();

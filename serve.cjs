@@ -1,6 +1,6 @@
 const http=require('node:http'),fs=require('node:fs'),path=require('node:path');
 const root=path.join(__dirname,'dist');
-const files={'/':'index.html','/index.html':'index.html',...Object.fromEntries(['app.js','gemini.js','style.css','config.js','cases.js','test-kit.js','judge-core.js','transcriber.js'].map(name=>['/'+name,name]))};
+const files={'/':'index.html','/index.html':'index.html','/example.html':'example.html',...Object.fromEntries(['app.js','gemini.js','style.css','config.js','cases.js','test-kit.js','judge-core.js','transcriber.js'].map(name=>['/'+name,name]))};
 function createServer(env=process.env){
   return http.createServer(async(req,res)=>{
     const pathname=new URL(req.url,'http://localhost').pathname;

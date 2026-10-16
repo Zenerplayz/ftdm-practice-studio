@@ -1,6 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {submission,scorecard}=require('./fixtures.cjs');
-const env={ALLOWED_ORIGIN:'https://practice.invalid',OPENROUTER_API_KEY:'synthetic-test-only'};
+const env={ALLOWED_ORIGIN:'https://practice.invalid',OPENROUTER_API_KEY:'synthetic-test-only',JUDGE_MODEL:'synthetic/test'};
 let ip=0;
 function request(body,options={}){return new Request('https://practice.invalid'+(options.path||'/api/judge'),{method:options.method||'POST',headers:{Origin:options.origin||env.ALLOWED_ORIGIN,'Content-Type':'application/json','CF-Connecting-IP':'192.0.2.'+(options.ip||++ip),...options.headers},...(options.method==='OPTIONS'?{}:{body:JSON.stringify(body)})});}
 async function worker(){return(await import('../backend/worker.mjs')).default;}
