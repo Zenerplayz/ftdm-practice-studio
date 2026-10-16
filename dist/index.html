@@ -1,11 +1,88 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FTDM Practice Studio</title><link rel="stylesheet" href="style.css"></head><body>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>FTDM Practice Studio</title><meta name="description" content="Practice DECA FTDM cases with a teammate, local transcription and evidence-backed Gemini feedback."><link rel="stylesheet" href="style.css">
+</head>
+<body>
 <header><a class="brand" href="./">FT<span>DM</span> / Practice Studio</a><span class="season">2026–27 · TEAM DECISION MAKING</span></header>
-<main><aside><div class="eyebrow">YOUR PRACTICE ROOM</div><h1>Make your case.</h1><p>Present together. Answer the judge. Get specific feedback.</p><nav><button data-step="0" class="active">01 <span>Set up your case</span></button><button data-step="1">02 <span>Present & record</span></button><button data-step="2">03 <span>Judge questions</span></button><button data-step="3">04 <span>Your scorecard</span></button></nav><div class="rules"><strong>2 teammates · 30 min prep</strong><p>15 minutes for the presentation and questions. Practice feedback is an AI estimate.</p><a href="https://www.deca.org/compete/financial-services-team-decision-making" target="_blank" rel="noopener">Official FTDM resources ↗</a></div></aside>
-<section class="workspace"><div id="notice" role="status" aria-live="polite"></div>
-<article data-panel="0"><div class="eyebrow">01 / SETUP</div><h2>A real case. A fresh rubric.</h2><div class="card"><label for="key">OpenRouter API key</label><input id="key" type="password" autocomplete="off" placeholder="sk-or-v1-…"><p class="hint">Paste your full key starting with sk-or-v1-. Kept only in this tab and sent to OpenRouter when scoring.</p><label for="model">Judge model</label><input id="model" value="stealth/space-bunny-alpha"><p class="hint">Space Bunny is free and accepts images. It retires October 5, 2026. No automatic model switch. Provider may retain prompts.</p></div>
-<div class="card"><label for="caseselect">Choose a roleplay · 8 cases</label><select id="caseselect"></select><p class="hint">Switch anytime after recording finishes. Each case keeps its own transcript, visuals, answers and feedback.</p><div id="casetag" class="eyebrow"></div><h3 id="casetitle"></h3><p id="casebrief"></p><p id="casenote" class="hint"></p><details><summary>Performance indicators for this practice</summary><ol id="casepis"></ol></details><a id="samplelink" target="_blank" rel="noopener">Read the full DECA 2026 district case ↗</a><p class="hint">Open the participant pages for preparation. Judge questions stay hidden here until you finish presenting.</p><details><summary>Use another FTDM case</summary><label for="custom">Case situation / participant instructions</label><textarea id="custom" placeholder="Paste a case you have permission to use"></textarea><label for="pis">Five performance indicators (one per line)</label><textarea id="pis"></textarea><label for="qs">Two judge questions (one per line)</label><textarea id="qs" placeholder="Paste the two questions from the judge instructions"></textarea><button id="applycase" class="secondary">Use this case</button><p class="hint">Other cases use the verified 2026–27 scoring structure with your five indicators.</p></details></div>
-<div class="card"><div class="row"><h3>Preparation timer</h3><output id="prepclock">30:00</output></div><button id="prep" class="secondary">Start 30-minute prep</button><p class="hint">The new rubric: five indicators × 10, solution × 24, career competencies × 18, overall impression × 8 = 100.</p><a id="guidelink" target="_blank" rel="noopener">2026–27 event guidelines ↗</a></div><div class="card"><div class="eyebrow">SYNTHETIC TEST KIT</div><h3>Try a complete sample submission</h3><p>Load three fictional family-finance visuals, a two-person transcript and both judge answers. No recording needed to test scoring.</p><button id="loaddemo" class="secondary">Load test visuals & transcript</button><p id="demostatus" class="hint" role="status"></p></div><button id="begin" class="primary">Enter presentation</button></article>
-<article data-panel="1" hidden><div class="eyebrow">02 / PRESENTATION</div><div class="row"><h2>Bring your ideas to life.</h2><output id="clock">15:00</output></div><div class="card"><h3>Your visuals</h3><p>Photograph your prep notes or upload a chart. Up to 6 photos, 8 MB each.</p><label class="upload" for="photos">＋ Take a photo or choose images</label><input id="photos" type="file" accept="image/*" capture="environment" multiple hidden><div id="gallery"></div><p class="hint">Photos and transcripts are sent to OpenRouter only when scoring. Audio is transcribed locally with a free speech model. The first use downloads the model.</p></div><div class="card"><div class="row"><h3>Team presentation</h3><span id="recstatus">Ready</span></div><p>Record both teammates, then press Stop. Your transcript appears automatically when processing finishes.</p><div class="actions"><button id="record" class="primary">● Record presentation</button><button id="stop" class="secondary" disabled>Stop recording</button></div><audio id="playback" controls hidden></audio><label for="transcript">Presentation transcript</label><textarea id="transcript" class="large" placeholder="Your speech will appear here. You can also paste or type a transcript."></textarea><p id="speechhint" class="hint" role="status" aria-live="polite"></p><button id="retrytranscribe" class="secondary" hidden>Retry transcription</button><label for="audioimport">Transcribe an existing recording</label><input id="audioimport" type="file" accept="audio/*"><p class="hint">Use this to recover a recording saved from an earlier session.</p></div><button id="finish" class="primary">Finish presentation & reveal questions</button></article>
-<article data-panel="2" hidden><div class="eyebrow">03 / JUDGE QUESTIONS</div><h2>Let’s hear your reasoning.</h2><p>Each teammate should answer at least one question. The 15-minute timer includes this portion.</p><div id="questions"></div><button id="judge" class="primary">Evaluate our roleplay</button></article>
-<article data-panel="3" hidden><div class="eyebrow">04 / SCORECARD</div><h2>Your next best performance.</h2><div id="results"><div class="card">Complete your presentation and answers to get a scorecard.</div></div><div class="actions"><button id="download" class="secondary" disabled>Download feedback</button><button id="retry" class="secondary">Back to answers</button></div></article>
-</section></main><footer>Independent practice tool · Not affiliated with DECA · Rubric checked against DECA’s current 2026 sample and 2026–27 guidelines.</footer><script src="app.js?v=byok-20261001-4"></script></body></html>
+<main>
+  <aside>
+    <div class="eyebrow">YOUR PRACTICE ROOM</div><h1>Make your case.</h1>
+    <p>Present together. Answer the judge. Practice with evidence-backed feedback.</p>
+    <p id="stepstatus" class="step-status">Step 1 of 4</p>
+    <nav aria-label="Practice steps">
+      <button type="button" data-step="0" class="active" aria-current="step">01 <span>Choose your case</span></button>
+      <button type="button" data-step="1">02 <span>Present & record</span></button>
+      <button type="button" data-step="2">03 <span>Judge questions</span></button>
+      <button type="button" data-step="3">04 <span>Your scorecard</span></button>
+    </nav>
+    <div class="rules"><strong>2 teammates · 30 min prep</strong><p>15 minutes for presentation and questions. Delivery and live teamwork are not assessed from a transcript.</p><a href="https://www.deca.org/compete/financial-services-team-decision-making" target="_blank" rel="noopener">Official FTDM resources ↗</a></div>
+    <details class="draft-tools"><summary>Keep your practice work</summary>
+      <label class="checklabel"><input id="autosave" type="checkbox"> Save drafts on this device</label>
+      <p id="draftstatus" class="hint" role="status">Optional device storage includes transcripts, visuals and scores. API keys and audio are never saved here.</p>
+      <div class="actions"><button id="savedraft" class="secondary">Download session</button></div>
+      <label for="importdraft">Import a saved session</label><input id="importdraft" type="file" accept=".json,application/json">
+      <button id="cleardraft" class="text-button">Clear saved device draft</button>
+    </details>
+    <button id="restart" class="text-button">Start a fresh attempt</button>
+  </aside>
+  <section class="workspace" aria-label="Practice workspace">
+    <div id="notice" role="status" aria-live="polite"></div>
+    <div id="sessionbar" class="sessionbar" hidden><span id="sessioncase"></span><div><span class="hint">Interview</span> <output id="sessionclock" aria-label="Interview time remaining">15:00</output></div></div>
+    <article data-panel="0">
+      <div class="eyebrow">01 / CHOOSE A CASE</div><h2>Your next practice starts here.</h2>
+      <div class="card">
+        <label for="caseselect">Choose a roleplay</label><select id="caseselect"></select>
+        <div class="actions start-action"><button id="begin" class="primary">Start practice · 15 min</button></div>
+        <div id="casetag" class="eyebrow case-tag"></div><h3 id="casetitle"></h3><p id="casebrief"></p><p id="casenote" class="hint"></p>
+        <a id="samplelink" target="_blank" rel="noopener">Read source case ↗</a>
+        <p class="hint">Start opens the presentation and begins the interview timer. Typing, recording and imported audio all count toward the same practice time.</p>
+        <details><summary>Performance indicators</summary><ol id="casepis"></ol></details>
+        <details><summary>Use a custom FTDM case</summary>
+          <label for="customtitle">Case name</label><input id="customtitle" maxlength="300" placeholder="My practice case">
+          <label for="custom">Case situation / participant instructions</label><textarea id="custom" maxlength="20000" placeholder="Paste a case you have permission to use"></textarea>
+          <label for="pis">Five performance indicators (one per line)</label><textarea id="pis"></textarea>
+          <label for="qs">Two judge questions (one per line)</label><textarea id="qs" placeholder="Questions from the judge instructions"></textarea>
+          <button id="applycase" class="secondary">Save as a custom case</button>
+          <p class="hint">Custom cases get their own saved draft. Questions stay hidden during the presentation.</p>
+        </details>
+      </div>
+      <div class="card"><div class="row"><h3>Preparation timer</h3><output id="prepclock" aria-label="Preparation time remaining">30:00</output></div><div class="actions"><button id="prep" class="secondary">Start 30-minute prep</button><button id="resetprep" class="text-button">Reset prep</button></div><p class="hint">Pause and resume retain the remaining time.</p><a id="guidelink" target="_blank" rel="noopener">Event guidelines ↗</a></div>
+      <details id="settings" class="card settings"><summary>Judge settings</summary>
+        <div id="providersettings"><label for="provider">Grading provider</label><select id="provider"><option value="gemini">Google Gemini</option><option value="openrouter">OpenRouter</option></select></div>
+        <div id="keysettings"><label id="keylabel" for="key">Gemini API key</label><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your Gemini API key"><p id="keyhint" class="hint">Kept in this tab only and sent directly to Google when scoring. Never included in saved sessions or downloads.</p><p id="geminihelp" class="hint"><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Create a Gemini API key in Google AI Studio ↗</a>. Paste it here, review your transcript, then evaluate. Free-tier limits depend on your model, project and region. Billing-enabled projects may incur charges; your Gemini chat subscription does not set this API quota.</p><button id="clearkey" class="text-button" type="button">Clear API key</button></div>
+        <div id="modelsettings"><label for="model">Judge model</label><input id="model" list="models" value="gemini-3.8-flash" maxlength="200"><datalist id="models"></datalist><label id="freerouting" class="checklabel"><input id="freeonly" type="checkbox" checked> Use free providers only</label><p id="routinghint" class="hint">Unchecking allows paid requests against your OpenRouter balance. No automatic model replacement. Check availability and pricing before scoring.</p><button id="checkmodel" class="secondary">Check available models</button></div>
+        <p id="modelstatus" class="hint" role="status">Availability and image support vary by model and provider.</p>
+      </details>
+      <details class="card"><summary>Try a sample submission</summary><p><a href="example.html">View an example scorecard without an API key ↗</a></p><p>Load a fictional two-person presentation, three visuals and answers to explore the scorecard. These are practice examples, not an official answer key.</p><button id="loaddemo" class="secondary">Load test visuals & transcript</button><p id="demostatus" class="hint" role="status"></p></details>
+      <p class="hint">Five indicators × 10, solution × 24, career competencies × 18, overall content readiness × 8 = 100. Scoring anchors are practice guidance; your actual judge's form is authoritative.</p>
+    </article>
+    <article data-panel="1" hidden>
+      <div class="eyebrow">02 / PRESENTATION</div><h2>Bring your ideas to life.</h2>
+      <div class="card"><div class="row"><h3>Team presentation</h3><span id="recstatus" role="status">Ready</span></div>
+        <div class="row"><button id="starttimer" class="secondary">Start interview timer</button><output id="clock" aria-label="Presentation time remaining">15:00</output></div>
+        <p>Record both teammates, import audio, or type a transcript. Review names, numbers and missing words before scoring.</p>
+        <div class="actions"><button id="record" class="primary">● Record presentation</button><button id="stop" class="secondary" disabled>Stop recording</button></div>
+        <audio id="playback" controls hidden></audio><div class="actions"><button id="saveaudio" class="secondary" hidden>Save recording</button><button id="retrytranscribe" class="secondary" hidden>Retry transcription</button><button id="canceltranscribe" class="secondary" hidden>Cancel transcription</button></div>
+        <label for="transcript">Presentation transcript</label><textarea id="transcript" class="large" maxlength="60000" placeholder="Your speech will appear here. You can also type or paste a transcript."></textarea>
+        <p id="speechhint" class="hint" role="status" aria-live="polite"></p>
+        <details><summary>Transcribe an existing recording</summary><label for="audioimport">Audio file · up to 100 MB / 30 minutes</label><input id="audioimport" type="file" accept="audio/*"></details>
+      </div>
+      <div class="card"><h3>Your visuals <span class="hint">optional</span></h3><p>Photograph prep notes or upload a chart. Up to six images, 8 MB each; images are resized before scoring.</p><label class="upload" for="photos">＋ Take a photo or choose images<input id="photos" class="visually-hidden" type="file" accept="image/*" capture="environment" multiple></label><div id="gallery"></div><p class="hint">Transcript, answers and visuals go to the selected judging provider when you score. Audio is transcribed locally using a downloaded English speech model.</p></div>
+      <button id="finish" class="primary">Finish presentation & reveal questions</button>
+    </article>
+    <article data-panel="2" hidden>
+      <div class="eyebrow">03 / JUDGE QUESTIONS</div><h2>Let’s hear your reasoning.</h2><p>Each teammate should answer at least one question. The interview timer includes this portion.</p><div id="questions"></div>
+      <div class="card"><h3>Ready to evaluate?</h3><ul class="checklist"><li id="checktranscript"></li><li id="checkanswers"></li><li id="checkvisuals"></li><li id="checkreview"></li></ul><label class="checklabel"><input id="transcriptreview" type="checkbox"> Transcript reviewed: names, numbers and meaning are correct</label><p class="hint">The judge evaluates the text and visuals supplied here. Live delivery, poise, confidence and teamwork remain unassessed.</p></div>
+      <button id="judge" class="primary">Evaluate our roleplay</button>
+    </article>
+    <article data-panel="3" hidden>
+      <div class="eyebrow">04 / SCORECARD</div><h2>Your next best performance.</h2><div id="results"></div><div class="actions"><button id="download" class="secondary" disabled>Download evaluated feedback</button><button id="retry" class="secondary">Back to answers</button></div>
+    </article>
+  </section>
+</main>
+<footer>Independent practice tool · Not affiliated with DECA · AI scores estimate observable content, not live competition performance.</footer>
+<script src="config.js"></script><script src="judge-core.js"></script><script src="gemini.js"></script><script src="cases.js"></script><script src="test-kit.js"></script><script src="app.js?v=20261016-gemini"></script>
+</body>
+</html>

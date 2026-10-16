@@ -1,0 +1,18 @@
+{
+  "name": "ftdm-practice-studio",
+  "private": true,
+  "version": "2.0.0",
+  "scripts": {
+    "start": "node serve.cjs",
+    "test": "node --test tests/core.test.cjs tests/worker.test.cjs tests/serve.test.cjs tests/gemini.test.cjs",
+    "test:browser": "node tests/browser.cjs",
+    "benchmark": "node scripts/benchmark.cjs",
+    "check": "node scripts/check.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

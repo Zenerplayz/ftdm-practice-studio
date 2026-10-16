@@ -1,39 +1,68 @@
 # FTDM Practice Studio
 
-A static DECA Financial Services Team Decision Making practice app with eight selectable cases, camera/photo uploads, audio recording, automatic local Whisper transcription, judge questions and a 100-point AI practice scorecard.
+A student-built practice room for DECA Financial Services Team Decision Making: choose a case, present with a teammate and receive an evidence-backed content scorecard.
+
+**[Open the app](https://zenerplayz.github.io/ftdm-practice-studio/)** · **[View an example scorecard](https://zenerplayz.github.io/ftdm-practice-studio/example.html)** · **[Official FTDM resources](https://www.deca.org/compete/financial-services-team-decision-making)**
+
+Project by Sebastian Schuermeyer. Independent practice tool; not affiliated with DECA. AI feedback is a practice estimate, not an official competition score.
+
+## Features
+
+- Eight sourced/adapted practice cases and independently saved custom cases.
+- Preparation and interview timers, uploaded visuals and local audio transcription.
+- Google Gemini API-key grading with validated rubric rows and evidence quotations.
+- Optional device drafts, session import/export and feedback tied to the evaluated submission.
+- A no-key example scorecard for exploring the feedback format.
+
+## Grade with Gemini
+
+1. [Create an API key in Google AI Studio](https://aistudio.google.com/apikey).
+2. Open **Judge settings**, keep **Google Gemini** selected and paste your key.
+3. Use **Check available models** to confirm model-list access. The initial model is `gemini-3.8-flash`; the app never replaces it automatically.
+4. Present or load the synthetic sample, answer both questions, review the transcript and evaluate.
+
+Your key stays in tab memory and goes directly to Google in the `x-goog-api-key` header. It is excluded from device drafts and exports. Reloading, switching providers or **Clear API key** removes it. No Google sign-in is required.
+
+Google receives the submitted transcript, answers and visuals when grading. Audio transcription runs locally after downloading an English Whisper model. Free-tier access depends on your model, project and region; billing-enabled projects can incur API charges. Check [Google's quota and billing guidance](https://ai.google.dev/gemini-api/docs/billing). Model listing does not prove remaining grading quota.
+
+OpenRouter is available as an optional alternative. Choose an available model explicitly; no retired model is preselected. Owner-managed services are covered in [advanced setup](docs/architecture.md).
 
 ## Run locally
 
-Install Node.js, then run `node serve.cjs` and open http://localhost:4173.
+Use Node.js 22 or newer:
 
-## Deploy with GitHub Pages
+```sh
+node serve.cjs
+```
 
-Push this repository's main branch to GitHub. In Settings → Pages, choose **GitHub Actions** as the publishing source. The included workflow publishes `dist/` on every main-branch push or manual run. No build or package installation is required. Relative asset paths support project Pages URLs.
+Open [localhost:4174](http://localhost:4174). The static app has no runtime package dependencies. Microphone access requires HTTPS or localhost.
 
-## Use
+## Development checks
 
-Each person enters their own OpenRouter API key in the setup screen. The key stays in that tab's memory and is sent directly to OpenRouter only when scoring; it is not saved to local storage or sent to this site. Record a presentation and press Stop: a free English Whisper model downloads on first use and transcribes locally. Keep the tab open during processing. Photos, transcript and answers go to OpenRouter when evaluation is requested. The model and runtime download from Hugging Face and jsDelivr. Allow microphone access and use HTTPS or localhost.
+```sh
+npm ci --ignore-scripts
+npm run check
+npm test
+npx playwright install chromium
+npm run test:browser
+```
 
-## OpenRouter setup
+Automated provider tests use synthetic responses and never spend API credits. GitHub Actions validates pull requests; merging `main` publishes `dist/` through GitHub Pages. Live model quality, real microphone accuracy and phone-specific behavior require separate evaluation.
 
-Each user needs an OpenRouter key and should choose a model available to that key. The default is `stealth/space-bunny-alpha`; availability, free-model limits and provider retention policies can change. Do not share API keys. GitHub Pages is static, so there is no server environment variable to configure for judging.
+## Repository map
 
-Space Bunny Alpha is the default model and is listed as free, but OpenRouter's free-model availability and limits can change. The model field is editable; check pricing before choosing a different model because paid models may use your OpenRouter account balance.
+| Path | Purpose |
+| --- | --- |
+| `dist/` | Browser source and the exact static files published to Pages |
+| `backend/` | Optional owner-managed judging service |
+| `scripts/` | Configuration, syntax checks and optional benchmarking |
+| `tests/` | Rubric, provider, HTTP and browser regression checks |
+| `docs/architecture.md` | Scoring contract, case provenance and advanced setup |
 
-Use **Load test visuals & transcript** for a synthetic submission with three example visuals, a two-person presentation and answers. Judge answers appear when the questions are revealed. Switching cases preserves each case's work in tab memory; refreshing loses the session. Download feedback before refreshing if needed.
+## Practice limits
 
-## Cases and scoring
+The content score totals 100. Live delivery, teamwork, poise and confidence are unassessed from transcripts and photos. Quotation validation checks that cited text exists; it cannot prove that an AI interpretation is correct. Official event guidelines and the actual judge form take precedence.
 
-The case library includes the official 2026 family-finance sample, a DECA customer-service adaptation, three archived 2018 FTDM adaptations, and three original practice cases. Source links and adaptation notes are shown in the app. Archived seven-indicator cases use five condensed practice learning targets with the current rubric; they are not official 2026–27 cases. The source PDFs are linked rather than republished.
+Enable **Save drafts on this device** or download a session to preserve work across refreshes. Device drafts can include transcripts, visuals and feedback; clear them on shared devices. API keys and audio are never saved in those drafts.
 
-The verified 2026–27 presentation structure totals 100: five performance indicators at 10 each, three solution dimensions at 8 each, three career competencies at 6 each, and overall impression at 8. AI evaluation is a practice estimate. Transcripts and photos cannot establish voice delivery, confidence, or live teamwork. No exam weighting is computed.
-
-Sources:
-- https://www.deca.org/compete/financial-services-team-decision-making
-- https://www.decadirect.org/articles/case-study-of-the-week-the-customer-before-the-coin
-- https://nilesnorthbusiness.weebly.com/uploads/3/7/2/1/37215033/2018_tdm_set.pdf
-- https://openrouter.ai/settings/keys
-- https://openrouter.ai/stealth/space-bunny-alpha
-- https://huggingface.co/Xenova/whisper-tiny.en
-
-Independent practice tool; not affiliated with DECA. Case source materials retain their publishers' rights.
+Case adaptations are labeled, original source PDFs are linked rather than republished, and their publishers retain their rights. See [case sources and architecture](docs/architecture.md).
