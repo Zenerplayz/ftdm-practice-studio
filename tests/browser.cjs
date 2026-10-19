@@ -82,17 +82,74 @@ async function mockJudge(page,options={}){
   },{gemini:true});
   await test('startup, mobile layout and early start action',async({page})=>{
     assert.equal(await page.locator('#caseselect option').count(),8);
+    assert.equal(await page.locator('#mode-team').isChecked(),true);
+    assert.equal(await page.locator('#pasteheading').isVisible(),true);
     await page.setViewportSize({width:390,height:844});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-    assert.ok((await page.locator('#begin').boundingBox()).y<844);
+    assert.ok((await page.locator('#pasteheading').boundingBox()).y<844);
     if(output){fs.mkdirSync(output,{recursive:true});await page.screenshot({path:path.join(output,'improved-mobile.png'),fullPage:true});await page.setViewportSize({width:1440,height:1000});await page.screenshot({path:path.join(output,'improved-desktop.png'),fullPage:true});}
   });
   await test('question gate and blank presentation gate',async({page})=>{await page.locator('[data-step="2"]').click();assert.match(await page.locator('#notice').innerText(),/Finish/);await page.locator('#begin').click();await page.locator('#finish').click();assert.match(await page.locator('#notice').innerText(),/transcript first/);});
+  await test('individual and team modes change timers, questions and the grading prompt',async({page})=>{
+    await page.locator('#mode-individual').check();
+    assert.equal(await page.locator('#prepclock').innerText(),'10:00');
+    assert.match(await page.locator('#formatstrong').innerText(),/1 participant/);
+    assert.equal(await page.locator('#samplecard').isHidden(),true);
+    await page.locator('#cluster').selectOption('marketing');
+    await page.locator('#customtitle').fill('Solo marketing roleplay');
+    await page.locator('#custom').fill('You are the marketing associate for a fictional coffee chain. Recommend a retention plan.');
+    await page.locator('#pis').fill('Explain customer service\nDescribe loyalty\nExplain a loyalty program\nDetermine customer needs\nPersuade others');
+    await page.locator('#qs').fill('');
+    await page.locator('#settings summary').click();await page.locator('#key').fill(fakeKey);await page.locator('#model').fill('synthetic/test');
+    await page.locator('#applycase').click();
+    await page.locator('#begin').click();
+    assert.equal(await page.locator('#clock').innerText(),'10:00');
+    assert.equal(await page.locator('#presenttitle').innerText(),'Your presentation');
+    await page.locator('#transcript').fill('I would confirm household income, expenses and risk tolerance before recommending a retention offer.');
+    await page.locator('#finish').click();
+    assert.equal(await page.locator('#questions textarea').count(),0);
+    await page.locator('#transcriptreview').check();
+    let systems=[];
+    await page.route('https://openrouter.ai/api/v1/chat/completions',async route=>{
+      const request=JSON.parse(route.request().postData());
+      systems.push(request.messages[0].content);
+      const prompt=JSON.parse(request.messages[1].content[0].text);
+      const input={case:prompt.case,transcript:prompt.transcript,answers:prompt.answers.map(answer=>answer.answer),photos:[]};
+      const card=scorecard(input);card.rows.forEach(row=>row.references[0].quote=input.transcript.slice(0,70));
+      await route.fulfill({json:{model:'synthetic/returned-model',choices:[{finish_reason:'stop',message:{content:JSON.stringify(card)}}]}});
+    });
+    await page.locator('#judge').click();await page.locator('.scorehero').waitFor();
+    assert.match(systems[0],/one participant/i);assert.match(systems[0],/10 minutes/);assert.match(systems[0],/No judge questions/);assert.doesNotMatch(systems[0],/two participants/i);
+    await page.locator('[data-step="0"]').click();
+    await page.locator('#mode-team').check();
+    await page.locator('#cluster').selectOption('ftdm');
+    assert.equal(await page.locator('#prepclock').innerText(),'30:00');
+    assert.match(await page.locator('#formatstrong').innerText(),/2 participants/);
+    await page.locator('#customtitle').fill('Team finance roleplay');
+    await page.locator('#custom').fill('You are two financial advisors. Recommend a savings plan for a fictional household.');
+    await page.locator('#pis').fill('A\nB\nC\nD\nE');
+    await page.locator('#qs').fill('What is the first step?\nHow will you measure it?');
+    await page.locator('#applycase').click();
+    await page.locator('#begin').click();
+    assert.equal(await page.locator('#clock').innerText(),'15:00');
+    assert.equal(await page.locator('#presenttitle').innerText(),'Team presentation');
+    await page.locator('#transcript').fill('We would confirm household income, expenses and risk tolerance before recommending products.');
+    await page.locator('#finish').click();
+    await page.locator('#answer0').fill('Start by confirming the household budget.');
+    await page.locator('#answer1').fill('Measure the monthly savings balance.');
+    await page.locator('#transcriptreview').check();
+    await page.locator('#judge').click();await page.locator('.scorehero').waitFor();
+    assert.match(systems[1],/two participants/i);assert.match(systems[1],/30 minutes/);assert.match(systems[1],/15 minutes/);
+    await page.locator('[data-step="0"]').click();
+    await page.locator('#caseselect').selectOption('family');
+    assert.equal(await page.locator('#prepclock').innerText(),'30:00');
+    assert.match(await page.locator('#casetitle').innerText(),/young family/);
+  });
   await test('typed practice starts timer and prep pause retains remaining time',async({page})=>{
     await page.locator('#prep').click();await page.clock.fastForward(10000);await page.locator('#prep').click();assert.match(await page.locator('#prepclock').innerText(),/29:50/);await page.clock.fastForward(20000);await page.locator('#prep').click();assert.match(await page.locator('#prepclock').innerText(),/29:50/);await page.locator('#begin').click();await page.clock.fastForward(5000);assert.equal(await page.locator('#clock').innerText(),'14:55');
   },{clock:true});
   await test('custom case display, switching and download preserve custom instructions',async({page})=>{
-    await page.getByText('Use a custom FTDM case',{exact:true}).click();await page.locator('#customtitle').fill('Synthetic custom case');await page.locator('#custom').fill('Custom scenario about a fictional bakery.');await page.locator('#pis').fill('A\nB\nC\nD\nE');await page.locator('#qs').fill('Question X?\nQuestion Y?');await page.locator('#applycase').click();const id=await page.locator('#caseselect').inputValue();assert.ok(id.startsWith('custom-'));assert.equal(await page.locator('#casebrief').innerText(),'Custom scenario about a fictional bakery.');await page.locator('#caseselect').selectOption('fraud');await page.locator('#caseselect').selectOption(id);assert.equal(await page.locator('#casetitle').innerText(),'Synthetic custom case');await page.locator('#begin').click();await page.locator('#transcript').fill('A synthetic custom presentation.');await page.locator('#finish').click();assert.equal(await page.locator('#questions h3').first().innerText(),'Question X?');
+    await page.locator('#customtitle').fill('Synthetic custom case');await page.locator('#custom').fill('Custom scenario about a fictional bakery.');await page.locator('#pis').fill('A\nB\nC\nD\nE');await page.locator('#qs').fill('Question X?\nQuestion Y?');await page.locator('#applycase').click();const id=await page.locator('#caseselect').inputValue();assert.ok(id.startsWith('custom-'));assert.equal(await page.locator('#casebrief').innerText(),'Custom scenario about a fictional bakery.');await page.locator('#caseselect').selectOption('fraud');await page.locator('#caseselect').selectOption(id);assert.equal(await page.locator('#casetitle').innerText(),'Synthetic custom case');await page.locator('#begin').click();await page.locator('#transcript').fill('A synthetic custom presentation.');await page.locator('#finish').click();assert.equal(await page.locator('#questions h3').first().innerText(),'Question X?');
     await page.getByText('Keep your practice work',{exact:true}).click();const [downloaded]=await Promise.all([page.waitForEvent('download'),page.locator('#savedraft').click()]);const session=JSON.parse(fs.readFileSync(await downloaded.path(),'utf8'));assert.equal(session.drafts.find(d=>d.case.id===id).case.scenario,'Custom scenario about a fictional bakery.');assert.equal(JSON.stringify(session).includes(fakeKey),false);
   });
   await test('opt-in autosave restores draft without key; clear removes saved storage',async({page})=>{
@@ -100,7 +157,7 @@ async function mockJudge(page,options={}){
   });
   await test('scoring checklist, evidence details and provenance export',async({page})=>{
     await mockJudge(page);await prepare(page);await page.locator('#transcriptreview').uncheck();await page.locator('#judge').click();assert.match(await page.locator('#notice').innerText(),/Review the transcript/);await page.locator('#transcriptreview').check();await page.locator('#judge').click();await page.locator('.scorehero').waitFor();assert.equal(await page.locator('.scorehero strong').innerText(),'48 / 100');assert.equal(await page.locator('.score-detail').count(),12);assert.equal(await page.locator('.priorities li').count(),3);
-    const [file]=await Promise.all([page.waitForEvent('download'),page.locator('#download').click()]);const data=JSON.parse(fs.readFileSync(await file.path(),'utf8'));assert.equal(data.model,'synthetic/returned-model');assert.equal(data.source,data.submission.case.source);assert.equal(data.submission.transcript,'We would confirm household income, expenses and risk tolerance before recommending products.');assert.equal(data.promptVersion,'2026-10-12-v2');assert.equal(JSON.stringify(data).includes(fakeKey),false);
+    const [file]=await Promise.all([page.waitForEvent('download'),page.locator('#download').click()]);const data=JSON.parse(fs.readFileSync(await file.path(),'utf8'));assert.equal(data.model,'synthetic/returned-model');assert.equal(data.source,data.submission.case.source);assert.equal(data.submission.transcript,'We would confirm household income, expenses and risk tolerance before recommending products.');assert.equal(data.promptVersion,'2026-10-19-v3');assert.equal(JSON.stringify(data).includes(fakeKey),false);
     if(output){await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:path.join(output,'improved-scorecard.png'),fullPage:true});}
   });
   await test('transcript, answer and visual edits invalidate scores',async({page})=>{

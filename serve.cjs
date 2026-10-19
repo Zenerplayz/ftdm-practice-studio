@@ -21,5 +21,5 @@ function createServer(env=process.env){
     fs.createReadStream(path.join(root,name)).pipe(res);
   });
 }
-if(require.main===module){const server=createServer();server.listen(Number(process.env.PORT||4174),'127.0.0.1',()=>console.log('FTDM Practice Studio: http://localhost:'+server.address().port+' — press Ctrl+C to stop'));}
+if(require.main===module){const server=createServer();server.listen(Number(process.env.PORT||4174),'127.0.0.1',()=>console.log('DECA Roleplay Practice Studio: http://localhost:'+server.address().port+' — press Ctrl+C to stop'));}
 module.exports={createServer};

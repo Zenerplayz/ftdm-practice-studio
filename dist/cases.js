@@ -16,5 +16,5 @@ const CASE_LIBRARY=[
  {id:'cashflow',title:'A bakery’s working-capital squeeze',tag:'Original FTDM-style practice',source:'https://www.deca.org/compete/financial-services-team-decision-making',note:'Original practice scenario, indicators and questions. All financial data are fictional.',scenario:'You are business-banking advisors for a bakery with average monthly revenue of $40,000 and cash operating costs of $34,000. A wholesale customer pays 60 days after delivery. The bakery has $8,000 cash, $30,000 receivables and a $12,000 equipment payment due next month. The owner requests a $25,000 line of credit. Analyze liquidity versus profitability, repayment capacity, receivables timing and financing alternatives. Recommend what information to request, safeguards and a cash-flow monitoring plan.',indicators:['Interpret cash-flow information.','Distinguish profit from liquidity.','Evaluate business credit needs.','Explain financing alternatives.','Assess lending risk and repayment capacity.'],questions:['What would change if the wholesale client paid thirty days late?','Why might a profitable business still run out of cash?']}
 ];
 
-return CASE_LIBRARY;
+return CASE_LIBRARY.map(item=>({...item,mode:'team',cluster:'finance',event:'ftdm'}));
 });
