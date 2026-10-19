@@ -39,7 +39,7 @@ function show(n){
 }
 function controls(){
   const locked=occupied();
-  ['record','judge','finish','audioimport','retrytranscribe','photos','caseselect','applycase','begin','starttimer','loaddemo','importdraft','cleardraft','restart','prep','resetprep','cluster'].forEach(id=>$(id).disabled=locked);
+  ['record','judge','finish','audioimport','retrytranscribe','photos','caseselect','applycase','begin','starttimer','loaddemo','importdraft','cleardraft','restart','prep','resetprep','cluster','pdffile','readpdf'].forEach(id=>$(id).disabled=locked);
   $('mode-individual').disabled=locked;$('mode-team').disabled=locked;
   $('stop').disabled=!recording;
   document.querySelectorAll('.answer-record,.photo-remove').forEach(e=>e.disabled=locked);
@@ -95,7 +95,7 @@ function saveDraft(){caseDrafts.set(currentCase,draft());}
 function exportSession(){saveDraft();return {type:'deca-roleplay-session',version:3,currentCase,drafts:[...caseDrafts.values()]};}
 function persist(){
   if(!autosave)return;
-  try{localStorage.setItem(STORAGE,JSON.stringify(exportSession()));$('draftstatus').textContent='Draft saved on this device. API key and audio are not saved.';}
+  try{localStorage.setItem(STORAGE,JSON.stringify(exportSession()));$('draftstatus').textContent='Draft saved on this device. API keys, roleplay PDFs and audio are not saved.';}
   catch{$('draftstatus').textContent='Device storage is full or unavailable. Download your session to keep this work.';}
 }
 function changed(){
@@ -139,7 +139,7 @@ $('mode-team').onchange=()=>setMode('team');
 $('cluster').onchange=e=>setCluster(e.target.value);
 $('prep').onclick=()=>{if(prepDeadline){prepRemaining=Math.max(0,prepDeadline-Date.now());prepDeadline=null;}else{if(prepRemaining===0)prepRemaining=practice().prepMs;prepDeadline=Date.now()+prepRemaining;}ticks();persist();};
 $('resetprep').onclick=()=>{prepDeadline=null;prepRemaining=practice().prepMs;ticks();persist();};
-$('begin').onclick=()=>{startTimer();show(1);};
+$('begin').onclick=startPractice;
 $('starttimer').onclick=startTimer;
 setInterval(ticks,500);
 document.querySelectorAll('[data-step]').forEach(e=>e.onclick=()=>show(Number(e.dataset.step)));
@@ -178,18 +178,28 @@ $('caseselect').onchange=e=>{
   }
   selectCase(e.target.value);
 };
-$('applycase').onclick=()=>{
-  try{
-    const indicators=$('pis').value.split('\n').map(v=>v.trim()).filter(Boolean),questions=$('qs').value.split('\n').map(v=>v.trim()).filter(Boolean);
-    const id='custom-'+(globalThis.crypto?.randomUUID?.()||Date.now());
-    const chosen=cluster==='ftdm'?{mode:'team',event:'ftdm',cluster:'finance'}:{mode,event:'',cluster};
-    const c={id,title:$('customtitle').value.trim()||'My practice roleplay',tag:'Your roleplay',source:null,note:'Your supplied situation, performance indicators and judge questions.',scenario:$('custom').value.trim(),indicators,questions,...chosen};
-    Judge.validateSubmission({case:c,transcript:'Validation only',answers:questions.map(()=>'Validation only'),photos:[]});
-    saveDraft();mode=chosen.mode;cluster=chosen.event==='ftdm'?'ftdm':chosen.cluster;
-    caseDrafts.set(id,{case:c,transcript:'',answers:[],photos:[],prepRemaining:practice().prepMs,mode,cluster});
-    addCaseOption(c);selectCase(id,false);persist();message('Roleplay ready. It has its own draft and can be revisited.');
-  }catch(e){message(e.message);}
-};
+function fieldLines(value){return value.split('\n').map(v=>v.trim()).filter(Boolean);}
+function reviewDirty(){
+  const situation=$('custom').value.trim(),title=$('customtitle').value.trim(),indicators=fieldLines($('pis').value).join('\n'),questions=fieldLines($('qs').value).join('\n');
+  if(!situation&&!title&&!indicators&&!questions)return false;
+  if(!activeCase.id.startsWith('custom-'))return true;
+  return activeCase.scenario!==situation||activeCase.title!==(title||'My practice roleplay')||activeCase.indicators.join('\n')!==indicators||activeCase.questions.join('\n')!==questions;
+}
+function commitCase(){
+  const indicators=fieldLines($('pis').value),questions=fieldLines($('qs').value);
+  const id='custom-'+(globalThis.crypto?.randomUUID?.()||Date.now());
+  const chosen=cluster==='ftdm'?{mode:'team',event:'ftdm',cluster:'finance'}:{mode,event:'',cluster};
+  const c={id,title:$('customtitle').value.trim()||'My practice roleplay',tag:'Your roleplay',source:null,note:'Your supplied situation, performance indicators and judge questions.',scenario:$('custom').value.trim(),indicators,questions,...chosen};
+  Judge.validateSubmission({case:c,transcript:'Validation only',answers:questions.map(()=>'Validation only'),photos:[]});
+  saveDraft();mode=chosen.mode;cluster=chosen.event==='ftdm'?'ftdm':chosen.cluster;
+  caseDrafts.set(id,{case:c,transcript:'',answers:[],photos:[],prepRemaining:practice().prepMs,mode,cluster});
+  addCaseOption(c);selectCase(id,false);persist();
+}
+function startPractice(){
+  if(reviewDirty()){try{commitCase();}catch(e){message(e.message);return;}}
+  startTimer();show(1);
+}
+$('applycase').onclick=()=>{try{commitCase();message('Roleplay ready. It has its own draft and can be revisited.');}catch(e){message(e.message);}};
 function gallery(){
   $('gallery').replaceChildren();
   photos.forEach((p,i)=>{
@@ -297,6 +307,47 @@ function providerChanged(){
   $('modelstatus').textContent=gemini?'Gemini grades your transcript, answers and visuals. The key stays in this tab and is sent only to Google. Check available models with your key; quota and pricing are managed in Google AI Studio.':'Availability and image support vary by model and provider.';
 }
 $('provider').onchange=providerChanged;$('clearkey').onclick=()=>{$('key').value='';message('API key cleared from this tab.');};
+function bytesToBase64(bytes){
+  let binary='';
+  for(let i=0;i<bytes.length;i+=0x8000)binary+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000));
+  return btoa(binary);
+}
+function applyExtractedPacket(packet){
+  $('customtitle').value=packet.eventName;$('custom').value=packet.situation;$('pis').value=packet.indicators.join('\n');$('qs').value=packet.questions.join('\n');
+  if(packet.cluster==='ftdm'){mode='team';cluster='ftdm';}
+  else{if(packet.format)mode=packet.format;cluster=packet.cluster;if(mode==='individual'&&cluster==='ftdm')cluster='';}
+  if(packet.format||packet.cluster==='ftdm'){if(!prepDeadline)prepRemaining=practice().prepMs;if(!recording){sessionStarted=false;deadline=null;}}
+  renderFormat();ticks();
+  $('reviewstatus').hidden=false;
+  $('reviewstatus').textContent=packet.note||'Review these fields. Fix anything that looks wrong, then start or use this roleplay. The PDF is not saved.';
+  message('Packet read. Review the fields below before you start.');
+  $('pasteheading').scrollIntoView({block:'nearest'});
+}
+$('readpdf').onclick=async()=>{
+  if(occupied())return;
+  let base;
+  try{base=apiBase();}catch(error){message(error.message);return;}
+  if(base){message('PDF reading needs a Gemini API key in this tab. This practice room uses an owner-managed judge, so paste the case below instead.');return;}
+  if(!useGemini()){$('settings').open=true;message('Packet reading uses Google Gemini. Switch the grading provider to Google Gemini, paste your API key, and try again. Or paste the case below.');return;}
+  const file=$('pdffile').files?.[0];
+  if(!file){message('Choose the DECA roleplay PDF first.');return;}
+  if(file.size>Gemini.MAX_PDF_BYTES){message('This PDF is too large for packet reading. Use a file under 8 MB, or paste the case below.');return;}
+  const key=normalizeApiKey($('key').value);
+  if(!key){$('settings').open=true;message('Paste your Gemini API key in Judge settings first. It stays in this tab and is sent only to Google. Or paste the case below.');return;}
+  busy=true;controls();message('Reading the packet with Gemini…');
+  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),90000);
+  try{
+    const bytes=new Uint8Array(await file.arrayBuffer());
+    if(bytes.length<5||String.fromCharCode(bytes[0],bytes[1],bytes[2],bytes[3],bytes[4])!=='%PDF-')throw Error('This file is not a PDF. Upload the DECA roleplay packet, or paste the case below.');
+    const model=Gemini.modelId($('model').value),body=Gemini.buildPacketRequest(bytesToBase64(bytes),model);
+    const response=await fetch(Gemini.BASE+'models/'+model+':generateContent',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(body)});
+    if(!response.ok)throw Error(Gemini.errorMessage(response.status,'packet'));
+    let payload;try{payload=await response.json();}catch{throw Error('Gemini returned a malformed packet. Paste the case below or try again.');}
+    applyExtractedPacket(Gemini.parsePacket(payload));
+    $('pdffile').value='';
+  }catch(error){message(error.name==='AbortError'?'Packet reading timed out. Try again, or paste the case below.':error.message);}
+  finally{clearTimeout(timeout);busy=false;controls();}
+};
 async function checkGeminiModels(){
   const key=normalizeApiKey($('key').value);if(!key){$('modelstatus').textContent='Paste your Gemini API key first.';return;}
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);busy=true;controls();

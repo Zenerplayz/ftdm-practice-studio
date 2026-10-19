@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>DECA Roleplay Practice Studio</title><meta name="description" content="Practice a DECA individual or team roleplay: paste your case, present, and get an evidence-backed practice score."><link rel="stylesheet" href="style.css">
+  <title>DECA Roleplay Practice Studio</title><meta name="description" content="Practice a DECA individual or team roleplay: upload your event packet, present, and get an evidence-backed practice score."><link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header><a class="brand" href="./">DECA <span>Roleplay</span></a><span class="season">Practice Studio · 2026–27</span></header>
 <main>
   <aside>
     <div class="eyebrow">YOUR PRACTICE ROOM</div><h1>Practice the roleplay.</h1>
-    <p>Paste your case. Present alone or with a partner. Leave with evidence-backed feedback.</p>
+    <p>Upload your event packet. Present alone or with a partner. Leave with evidence-backed feedback.</p>
     <p id="stepstatus" class="step-status">Step 1 of 4</p>
     <nav aria-label="Practice steps">
       <button type="button" data-step="0" class="active" aria-current="step">01 <span>Your case</span></button>
@@ -20,7 +20,7 @@
     <div class="rules"><strong id="formatstrong">2 participants · 30 min prep</strong><p id="formatcopy">15 minutes for the presentation and questions. Live teamwork is not assessed from a transcript.</p><a id="officiallink" href="https://www.deca.org/compete/financial-services-team-decision-making" target="_blank" rel="noopener">Official FTDM page ↗</a></div>
     <details class="draft-tools"><summary>Keep your practice work</summary>
       <label class="checklabel"><input id="autosave" type="checkbox"> Save drafts on this device</label>
-      <p id="draftstatus" class="hint" role="status">Optional device storage includes transcripts, visuals and scores. API keys and audio are never saved here.</p>
+      <p id="draftstatus" class="hint" role="status">Optional device storage includes transcripts, visuals and scores. API keys, roleplay PDFs and audio are never saved here.</p>
       <div class="actions"><button id="savedraft" class="secondary">Download session</button></div>
       <label for="importdraft">Import a saved session</label><input id="importdraft" type="file" accept=".json,application/json">
       <button id="cleardraft" class="text-button">Clear saved device draft</button>
@@ -31,9 +31,18 @@
     <div id="notice" role="status" aria-live="polite"></div>
     <div id="sessionbar" class="sessionbar" hidden><span id="sessioncase"></span><div><span id="sessionclocklabel" class="hint">Interview</span> <output id="sessionclock" aria-label="Presentation time remaining">15:00</output></div></div>
     <article data-panel="0">
-      <div class="eyebrow">01 / YOUR CASE</div><h2>Paste the roleplay you want to practice.</h2>
+      <div class="eyebrow">01 / YOUR CASE</div><h2>Upload the roleplay you want to practice.</h2>
+      <div class="card" id="uploadcard">
+        <h3 id="uploadheading">Upload your roleplay PDF</h3>
+        <p>Upload the DECA event packet you received. A standard packet includes participant instructions, the event name, the situation, performance indicators, and sometimes judge questions.</p>
+        <label for="pdffile">DECA roleplay PDF</label>
+        <input id="pdffile" type="file" accept="application/pdf,.pdf">
+        <div class="actions"><button id="readpdf" class="primary" type="button">Read this PDF</button></div>
+        <p class="hint">The file and your Gemini API key stay in this tab. The PDF is sent only to Google to fill the fields below, and it is never saved. Paste the case below if you do not have a key yet.</p>
+      </div>
       <div class="card case-entry">
-        <h3 id="pasteheading">Your roleplay</h3>
+        <h3 id="pasteheading">Review or type the case</h3>
+        <p id="reviewstatus" class="hint" hidden></p>
         <label for="custom">Situation / participant instructions</label><textarea id="custom" maxlength="20000" placeholder="Paste a case you have permission to use"></textarea>
         <fieldset class="mode-picker">
           <legend>Format</legend>
@@ -102,6 +111,6 @@
   </section>
 </main>
 <footer>Independent practice tool · Not affiliated with DECA · The score is a practice estimate, not an official competition score.</footer>
-<script src="config.js"></script><script src="judge-core.js"></script><script src="gemini.js"></script><script src="cases.js"></script><script src="test-kit.js"></script><script src="app.js?v=20261019-roleplay"></script>
+<script src="config.js"></script><script src="judge-core.js"></script><script src="gemini.js?v=20261019-packet"></script><script src="cases.js"></script><script src="test-kit.js"></script><script src="app.js?v=20261019-packet"></script>
 </body>
 </html>
