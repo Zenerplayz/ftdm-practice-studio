@@ -82,17 +82,76 @@ async function mockJudge(page,options={}){
   },{gemini:true});
   await test('startup, mobile layout and early start action',async({page})=>{
     assert.equal(await page.locator('#caseselect option').count(),8);
+    assert.equal(await page.locator('#mode-team').isChecked(),true);
+    assert.equal(await page.locator('#uploadheading').isVisible(),true);
+    assert.equal(await page.locator('#pasteheading').isVisible(),true);
     await page.setViewportSize({width:390,height:844});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-    assert.ok((await page.locator('#begin').boundingBox()).y<844);
+    assert.ok((await page.locator('#uploadheading').boundingBox()).y<844);
+    assert.ok((await page.locator('#pdffile').boundingBox()).y<844);
     if(output){fs.mkdirSync(output,{recursive:true});await page.screenshot({path:path.join(output,'improved-mobile.png'),fullPage:true});await page.setViewportSize({width:1440,height:1000});await page.screenshot({path:path.join(output,'improved-desktop.png'),fullPage:true});}
   });
   await test('question gate and blank presentation gate',async({page})=>{await page.locator('[data-step="2"]').click();assert.match(await page.locator('#notice').innerText(),/Finish/);await page.locator('#begin').click();await page.locator('#finish').click();assert.match(await page.locator('#notice').innerText(),/transcript first/);});
+  await test('individual and team modes change timers, questions and the grading prompt',async({page})=>{
+    await page.locator('#mode-individual').check();
+    assert.equal(await page.locator('#prepclock').innerText(),'10:00');
+    assert.match(await page.locator('#formatstrong').innerText(),/1 participant/);
+    assert.equal(await page.locator('#samplecard').isHidden(),true);
+    await page.locator('#cluster').selectOption('marketing');
+    await page.locator('#customtitle').fill('Solo marketing roleplay');
+    await page.locator('#custom').fill('You are the marketing associate for a fictional coffee chain. Recommend a retention plan.');
+    await page.locator('#pis').fill('Explain customer service\nDescribe loyalty\nExplain a loyalty program\nDetermine customer needs\nPersuade others');
+    await page.locator('#qs').fill('');
+    await page.locator('#settings summary').click();await page.locator('#key').fill(fakeKey);await page.locator('#model').fill('synthetic/test');
+    await page.locator('#applycase').click();
+    await page.locator('#begin').click();
+    assert.equal(await page.locator('#clock').innerText(),'10:00');
+    assert.equal(await page.locator('#presenttitle').innerText(),'Your presentation');
+    await page.locator('#transcript').fill('I would confirm household income, expenses and risk tolerance before recommending a retention offer.');
+    await page.locator('#finish').click();
+    assert.equal(await page.locator('#questions textarea').count(),0);
+    await page.locator('#transcriptreview').check();
+    let systems=[];
+    await page.route('https://openrouter.ai/api/v1/chat/completions',async route=>{
+      const request=JSON.parse(route.request().postData());
+      systems.push(request.messages[0].content);
+      const prompt=JSON.parse(request.messages[1].content[0].text);
+      const input={case:prompt.case,transcript:prompt.transcript,answers:prompt.answers.map(answer=>answer.answer),photos:[]};
+      const card=scorecard(input);card.rows.forEach(row=>row.references[0].quote=input.transcript.slice(0,70));
+      await route.fulfill({json:{model:'synthetic/returned-model',choices:[{finish_reason:'stop',message:{content:JSON.stringify(card)}}]}});
+    });
+    await page.locator('#judge').click();await page.locator('.scorehero').waitFor();
+    assert.match(systems[0],/one participant/i);assert.match(systems[0],/10 minutes/);assert.match(systems[0],/No judge questions/);assert.doesNotMatch(systems[0],/two participants/i);
+    await page.locator('[data-step="0"]').click();
+    await page.locator('#mode-team').check();
+    await page.locator('#cluster').selectOption('ftdm');
+    assert.equal(await page.locator('#prepclock').innerText(),'30:00');
+    assert.match(await page.locator('#formatstrong').innerText(),/2 participants/);
+    await page.locator('#customtitle').fill('Team finance roleplay');
+    await page.locator('#custom').fill('You are two financial advisors. Recommend a savings plan for a fictional household.');
+    await page.locator('#pis').fill('A\nB\nC\nD\nE');
+    await page.locator('#qs').fill('What is the first step?\nHow will you measure it?');
+    await page.locator('#applycase').click();
+    await page.locator('#begin').click();
+    assert.equal(await page.locator('#clock').innerText(),'15:00');
+    assert.equal(await page.locator('#presenttitle').innerText(),'Team presentation');
+    await page.locator('#transcript').fill('We would confirm household income, expenses and risk tolerance before recommending products.');
+    await page.locator('#finish').click();
+    await page.locator('#answer0').fill('Start by confirming the household budget.');
+    await page.locator('#answer1').fill('Measure the monthly savings balance.');
+    await page.locator('#transcriptreview').check();
+    await page.locator('#judge').click();await page.locator('.scorehero').waitFor();
+    assert.match(systems[1],/two participants/i);assert.match(systems[1],/30 minutes/);assert.match(systems[1],/15 minutes/);
+    await page.locator('[data-step="0"]').click();
+    await page.locator('#caseselect').selectOption('family');
+    assert.equal(await page.locator('#prepclock').innerText(),'30:00');
+    assert.match(await page.locator('#casetitle').innerText(),/young family/);
+  });
   await test('typed practice starts timer and prep pause retains remaining time',async({page})=>{
     await page.locator('#prep').click();await page.clock.fastForward(10000);await page.locator('#prep').click();assert.match(await page.locator('#prepclock').innerText(),/29:50/);await page.clock.fastForward(20000);await page.locator('#prep').click();assert.match(await page.locator('#prepclock').innerText(),/29:50/);await page.locator('#begin').click();await page.clock.fastForward(5000);assert.equal(await page.locator('#clock').innerText(),'14:55');
   },{clock:true});
   await test('custom case display, switching and download preserve custom instructions',async({page})=>{
-    await page.getByText('Use a custom FTDM case',{exact:true}).click();await page.locator('#customtitle').fill('Synthetic custom case');await page.locator('#custom').fill('Custom scenario about a fictional bakery.');await page.locator('#pis').fill('A\nB\nC\nD\nE');await page.locator('#qs').fill('Question X?\nQuestion Y?');await page.locator('#applycase').click();const id=await page.locator('#caseselect').inputValue();assert.ok(id.startsWith('custom-'));assert.equal(await page.locator('#casebrief').innerText(),'Custom scenario about a fictional bakery.');await page.locator('#caseselect').selectOption('fraud');await page.locator('#caseselect').selectOption(id);assert.equal(await page.locator('#casetitle').innerText(),'Synthetic custom case');await page.locator('#begin').click();await page.locator('#transcript').fill('A synthetic custom presentation.');await page.locator('#finish').click();assert.equal(await page.locator('#questions h3').first().innerText(),'Question X?');
+    await page.locator('#customtitle').fill('Synthetic custom case');await page.locator('#custom').fill('Custom scenario about a fictional bakery.');await page.locator('#pis').fill('A\nB\nC\nD\nE');await page.locator('#qs').fill('Question X?\nQuestion Y?');await page.locator('#applycase').click();const id=await page.locator('#caseselect').inputValue();assert.ok(id.startsWith('custom-'));assert.equal(await page.locator('#casebrief').innerText(),'Custom scenario about a fictional bakery.');await page.locator('#caseselect').selectOption('fraud');await page.locator('#caseselect').selectOption(id);assert.equal(await page.locator('#casetitle').innerText(),'Synthetic custom case');await page.locator('#begin').click();await page.locator('#transcript').fill('A synthetic custom presentation.');await page.locator('#finish').click();assert.equal(await page.locator('#questions h3').first().innerText(),'Question X?');
     await page.getByText('Keep your practice work',{exact:true}).click();const [downloaded]=await Promise.all([page.waitForEvent('download'),page.locator('#savedraft').click()]);const session=JSON.parse(fs.readFileSync(await downloaded.path(),'utf8'));assert.equal(session.drafts.find(d=>d.case.id===id).case.scenario,'Custom scenario about a fictional bakery.');assert.equal(JSON.stringify(session).includes(fakeKey),false);
   });
   await test('opt-in autosave restores draft without key; clear removes saved storage',async({page})=>{
@@ -100,7 +159,7 @@ async function mockJudge(page,options={}){
   });
   await test('scoring checklist, evidence details and provenance export',async({page})=>{
     await mockJudge(page);await prepare(page);await page.locator('#transcriptreview').uncheck();await page.locator('#judge').click();assert.match(await page.locator('#notice').innerText(),/Review the transcript/);await page.locator('#transcriptreview').check();await page.locator('#judge').click();await page.locator('.scorehero').waitFor();assert.equal(await page.locator('.scorehero strong').innerText(),'48 / 100');assert.equal(await page.locator('.score-detail').count(),12);assert.equal(await page.locator('.priorities li').count(),3);
-    const [file]=await Promise.all([page.waitForEvent('download'),page.locator('#download').click()]);const data=JSON.parse(fs.readFileSync(await file.path(),'utf8'));assert.equal(data.model,'synthetic/returned-model');assert.equal(data.source,data.submission.case.source);assert.equal(data.submission.transcript,'We would confirm household income, expenses and risk tolerance before recommending products.');assert.equal(data.promptVersion,'2026-10-12-v2');assert.equal(JSON.stringify(data).includes(fakeKey),false);
+    const [file]=await Promise.all([page.waitForEvent('download'),page.locator('#download').click()]);const data=JSON.parse(fs.readFileSync(await file.path(),'utf8'));assert.equal(data.model,'synthetic/returned-model');assert.equal(data.source,data.submission.case.source);assert.equal(data.submission.transcript,'We would confirm household income, expenses and risk tolerance before recommending products.');assert.equal(data.promptVersion,'2026-10-19-v3');assert.equal(JSON.stringify(data).includes(fakeKey),false);
     if(output){await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:path.join(output,'improved-scorecard.png'),fullPage:true});}
   });
   await test('transcript, answer and visual edits invalidate scores',async({page})=>{
@@ -133,6 +192,97 @@ async function mockJudge(page,options={}){
   await test('sample does not overwrite family draft and fresh attempt asks before clearing',async({page})=>{
     await page.locator('#begin').click();await page.locator('#transcript').fill('My existing family draft.');await page.locator('[data-step="0"]').click();await page.getByText('Try a sample submission',{exact:true}).click();await page.locator('#loaddemo').click();await page.locator('[data-step="0"]').click();await page.locator('#caseselect').selectOption('family');assert.equal(await page.locator('#transcript').inputValue(),'My existing family draft.');page.once('dialog',dialog=>dialog.dismiss());await page.locator('#restart').click();assert.equal(await page.locator('#transcript').inputValue(),'My existing family draft.');
   });
+  await test('PDF upload reviews a mocked Gemini packet and keeps the file and key out of storage',async({page})=>{
+    const Gemini=require('../dist/gemini.js');
+    const pdf=Buffer.from('%PDF-1.4\n%synthetic-packet-marker\n');
+    let calls=0,packet=null;
+    await page.route('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent',async route=>{
+      calls++;
+      assert.equal(route.request().headers()['x-goog-api-key'],'synthetic-gemini-key');
+      assert.equal(route.request().url().includes('key='),false);
+      const request=route.request().postDataJSON();
+      assert.equal(request.contents[0].parts[0].inlineData.mimeType,'application/pdf');
+      assert.equal(request.messages,undefined);assert.equal(request.provider,undefined);
+      assert.equal(JSON.stringify(request).includes('synthetic-gemini-key'),false);
+      assert.equal(request.generationConfig.responseFormat.text.mimeType,'APPLICATION_JSON');
+      await route.fulfill({json:{candidates:[{finishReason:'STOP',content:{parts:[{text:JSON.stringify(packet)}]}}]}});
+    });
+    await page.locator('#pdffile').setInputFiles({name:'packet.pdf',mimeType:'application/pdf',buffer:pdf});
+    await page.locator('#readpdf').click();
+    assert.match(await page.locator('#notice').innerText(),/Gemini API key/);
+    assert.equal(await page.locator('#settings').evaluate(el=>el.open),true);
+    assert.equal(calls,0);
+    await page.locator('#pdffile').setInputFiles({name:'big.pdf',mimeType:'application/pdf',buffer:Buffer.concat([Buffer.from('%PDF-1.4\n'),Buffer.alloc(Gemini.MAX_PDF_BYTES)])});
+    await page.locator('#readpdf').click();
+    assert.match(await page.locator('#notice').innerText(),/too large|8 MB/);
+    assert.equal(calls,0);
+    await page.locator('#key').fill('synthetic-gemini-key');
+    await page.locator('#pdffile').setInputFiles({name:'notes.txt',mimeType:'text/plain',buffer:Buffer.from('not a roleplay packet')});
+    await page.locator('#readpdf').click();
+    await page.getByText(/not a PDF/).waitFor();
+    assert.equal(calls,0);
+    await page.locator('#custom').fill('keep this typed case');
+    packet={isRoleplay:false,note:'This is an exam.',eventName:'',cluster:'',format:'',situation:'Extracted situation that must not be applied.',indicators:[],questions:[]};
+    await page.locator('#pdffile').setInputFiles({name:'exam.pdf',mimeType:'application/pdf',buffer:pdf});
+    await page.locator('#readpdf').click();
+    await page.getByText(/does not look like a DECA roleplay/).waitFor();
+    assert.match(await page.locator('#notice').innerText(),/exam/);
+    assert.equal(await page.locator('#custom').inputValue(),'keep this typed case');
+    assert.equal(calls,1);
+    packet={isRoleplay:true,eventName:'Retail Marketing Series',cluster:'marketing',format:'individual',situation:'You are a marketing associate for a fictional retailer. Recommend a loyalty plan.',indicators:['Explain marketing strategies','Explain customer buying behavior','Explain a loyalty program','Determine customer needs','Persuade others'],questions:['How will you measure success?'],note:''};
+    await page.locator('#readpdf').click();
+    await page.getByText(/Packet read/).waitFor();
+    assert.equal(await page.locator('#customtitle').inputValue(),'Retail Marketing Series');
+    assert.match(await page.locator('#custom').inputValue(),/loyalty plan/);
+    assert.equal((await page.locator('#pis').inputValue()).split('\n').length,5);
+    assert.equal(await page.locator('#qs').inputValue(),'How will you measure success?');
+    assert.equal(await page.locator('#mode-individual').isChecked(),true);
+    assert.equal(await page.locator('#cluster').inputValue(),'marketing');
+    assert.equal(await page.locator('#prepclock').innerText(),'10:00');
+    assert.equal(await page.locator('#samplecard').isHidden(),true);
+    assert.equal(await page.locator('#reviewstatus').isHidden(),false);
+    assert.equal(await page.locator('#stepstatus').innerText(),'Step 1 of 4');
+    assert.equal(await page.locator('#pdffile').evaluate(el=>el.files.length),0);
+    await page.locator('#customtitle').fill('Edited packet title');
+    await page.locator('#begin').click();
+    assert.equal(await page.locator('#sessioncase').innerText(),'Edited packet title');
+    assert.equal(await page.locator('#clock').innerText(),'10:00');
+    assert.equal(await page.locator('#presenttitle').innerText(),'Your presentation');
+    await page.locator('[data-step="0"]').click();
+    packet={isRoleplay:true,eventName:'Financial Services Team Decision Making',cluster:'finance',format:'individual',situation:'You and your partner advise a fictional household on a savings plan.',indicators:['Explain the need to save and invest.','Explain types of investments.','Explain types of financial markets.','Determine insurance needs.','Explain client-service responsibilities.'],questions:['What is the first step?','How will you measure it?'],note:''};
+    await page.locator('#pdffile').setInputFiles({name:'ftdm.pdf',mimeType:'application/pdf',buffer:pdf});
+    await page.locator('#readpdf').click();
+    await page.getByText(/Packet read/).waitFor();
+    assert.equal(await page.locator('#mode-team').isChecked(),true);
+    assert.equal(await page.locator('#cluster').inputValue(),'ftdm');
+    assert.equal(await page.locator('#prepclock').innerText(),'30:00');
+    assert.equal(await page.locator('#samplecard').isHidden(),false);
+    await page.getByText('Keep your practice work',{exact:true}).click();
+    await page.locator('#autosave').check();
+    const saved=await page.evaluate(()=>localStorage.getItem('ftdm-drafts-v2'));
+    assert.equal(saved.includes('synthetic-gemini-key'),false);
+    assert.equal(saved.includes('synthetic-packet-marker'),false);
+    assert.equal(saved.includes('%PDF-'),false);
+  },{gemini:true});
+  await test('PDF reading does not send the packet when Gemini is not the provider',async({page})=>{
+    let calls=0;
+    await page.route('https://generativelanguage.googleapis.com/**',route=>{calls++;return route.abort();});
+    await page.route('https://openrouter.ai/**',route=>{calls++;return route.abort();});
+    await page.locator('#pdffile').setInputFiles({name:'packet.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4\n')});
+    await page.locator('#readpdf').click();
+    assert.match(await page.locator('#notice').innerText(),/Google Gemini/);
+    assert.equal(await page.locator('#settings').evaluate(el=>el.open),true);
+    assert.equal(calls,0);
+  });
+  await test('owner-managed judging does not upload a roleplay PDF',async({page})=>{
+    let calls=0;
+    await page.route('https://generativelanguage.googleapis.com/**',route=>{calls++;return route.abort();});
+    await page.locator('#pdffile').setInputFiles({name:'packet.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4\n')});
+    await page.locator('#readpdf').click();
+    assert.match(await page.locator('#notice').innerText(),/owner-managed/);
+    assert.match(await page.locator('#notice').innerText(),/paste the case/i);
+    assert.equal(calls,0);
+  },{ownerAPI:true});
   await test('owner API uses validated submission contract through backend and renders provenance',async({page})=>{
     const {default:worker}=await import('../backend/worker.mjs'),originalFetch=global.fetch;let sent;
     global.fetch=async(_,opts)=>{const request=JSON.parse(opts.body),prompt=JSON.parse(request.messages[1].content[0].text);const card=scorecard({case:prompt.case});return Response.json({model:'synthetic/backend-model',choices:[{message:{content:JSON.stringify(card)}}]});};

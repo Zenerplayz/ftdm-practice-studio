@@ -1,4 +1,4 @@
-name: Deploy FTDM Practice Studio to GitHub Pages
+name: Deploy DECA Roleplay Practice Studio to GitHub Pages
 
 on:
   push:

@@ -14,7 +14,7 @@ const samples=[{id:'weak',submission:weak},{id:'adequate',submission:adequate},{
     const run={sample:sample.id,repeat:repeat+1};
     try{
       const request=Judge.buildRequest(sample.submission,model,{freeOnly:true});
-      const response=await fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key,'X-OpenRouter-Title':'FTDM practice benchmark'},body:JSON.stringify(request),signal:AbortSignal.timeout(120000)});
+      const response=await fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key,'X-OpenRouter-Title':'DECA roleplay practice benchmark'},body:JSON.stringify(request),signal:AbortSignal.timeout(120000)});
       if(!response.ok)throw Error('Provider HTTP '+response.status);
       const body=await response.json();run.model=body.model||model;run.feedback=Judge.parseCompletion(body,sample.submission);run.status='valid';
     }catch(error){run.status='failed';run.error=error.message;}
